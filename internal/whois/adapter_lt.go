@@ -8,27 +8,27 @@ import (
 
 // ltAdapter handles .lt domains served by whois.domreg.lt.
 //
-// The DOMREG WHOIS response contains a "Registered:" line with the registration date:
+// The DOMREG WHOIS response contains:
+// - a "Registered:" line with the registration date
+// - a "Status: registered" line
 //
-//	Registered:		2015-12-30
-//
-// The expiryRE regexp matches "Registered:\t\t" before reaching "Expires:",
-// then fails to parse the registration date as the expiry date.
-// This adapter removes the "Registered:" line so "Expires:" is matched correctly.
+// The expiryRE regexp matches "registered" in the Status line before reaching
+// "Expires:", then captures the rest including "Expires:\t\t2026-12-31".
+// This adapter removes both lines so "Expires:" is matched correctly.
 type ltAdapter struct{}
 
 func (a *ltAdapter) Prepare(req *whois.Request) error {
 	return whois.DefaultAdapter.Prepare(req)
 }
 
-var ltRegisteredRE = regexp.MustCompile(`(?im)^Registered:.*\n?`)
+var ltStripRE = regexp.MustCompile(`(?im)^(Registered:|Status:).*\n?`)
 
 func (a *ltAdapter) Text(res *whois.Response) ([]byte, error) {
 	text, err := whois.DefaultAdapter.Text(res)
 	if err != nil {
 		return nil, err
 	}
-	return ltRegisteredRE.ReplaceAll(text, nil), nil
+	return ltStripRE.ReplaceAll(text, nil), nil
 }
 
 func init() {
